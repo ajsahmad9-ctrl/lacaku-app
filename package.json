@@ -1,0 +1,14 @@
+{
+  "name": "scalev-payment-auth-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Login Google (verifikasi manual, tanpa library) + pembayaran sekali-bayar via Scalev, zero-dependency Node.js.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}

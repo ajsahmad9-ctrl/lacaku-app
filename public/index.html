@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Masuk</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #f5f5f7;
+    }
+    .card {
+      background: #fff;
+      padding: 2.5rem;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      text-align: center;
+      max-width: 360px;
+      width: 100%;
+    }
+    h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+    p { color: #555; margin-bottom: 1.5rem; }
+    #status { margin-top: 1rem; color: #c0392b; font-size: 0.9rem; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Selamat datang</h1>
+    <p>Masuk dengan akun Google Anda untuk melanjutkan.</p>
+
+    <div id="g_id_onload"
+         data-client_id="%%GOOGLE_CLIENT_ID%%"
+         data-callback="handleGoogleCredentialResponse"
+         data-ux_mode="popup"
+         data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin"
+         data-type="standard"
+         data-size="large"
+         data-theme="outline"
+         data-text="signin_with"
+         data-shape="pill"
+         data-logo_alignment="left">
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    // PENTING: data-ux_mode="popup" (BUKAN "redirect") - ux_mode redirect
+    // pernah bermasalah di beberapa browser Android (mis. Samsung Internet)
+    // karena Android App Links "membajak" URL redirect Google sebelum
+    // sempat kembali ke halaman kita. Popup mode tidak kena masalah itu.
+    async function handleGoogleCredentialResponse(response) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Memverifikasi...';
+      try {
+        const res = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential: response.credential }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          statusEl.textContent = data.error || 'Login gagal. Coba lagi.';
+          return;
+        }
+        // Sengaja navigasi manual di client (bukan mengandalkan redirect
+        // HTTP), karena panggilan di atas pakai fetch() - lihat komentar
+        // di src/routes/auth.js untuk penjelasan lengkapnya.
+        window.location.href = data.redirectTo || '/app';
+      } catch (err) {
+        statusEl.textContent = 'Terjadi kesalahan jaringan. Coba lagi.';
+      }
+    }
+  </script>
+</body>
+</html>
