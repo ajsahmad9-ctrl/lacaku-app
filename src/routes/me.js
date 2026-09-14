@@ -1,5 +1,6 @@
 const session = require('../session');
 const db = require('../db');
+const { isEffectivelyUnlocked } = require('../ownerAccess');
 
 function sendJson(res, statusCode, obj) {
   const body = JSON.stringify(obj);
@@ -36,7 +37,7 @@ function handleMe(req, res) {
     email: user.email,
     name: user.name,
     picture: user.picture,
-    unlocked: !!user.unlocked,
+    unlocked: isEffectivelyUnlocked(user),
     unlockedAt: user.unlockedAt || null,
   });
 }

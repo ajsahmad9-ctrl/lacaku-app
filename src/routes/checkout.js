@@ -1,5 +1,6 @@
 const session = require('../session');
 const db = require('../db');
+const { isEffectivelyUnlocked } = require('../ownerAccess');
 
 function sendHtmlError(res, statusCode, title, message) {
   res.writeHead(statusCode, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -40,7 +41,7 @@ function handleCheckout(req, res) {
     return;
   }
 
-  if (user.unlocked) {
+  if (isEffectivelyUnlocked(user)) {
     res.writeHead(302, { Location: '/app' });
     res.end();
     return;
