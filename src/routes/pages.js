@@ -5,6 +5,13 @@ const db = require('../db');
 
 const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
 
+// URL aplikasi Lacaku yang sesungguhnya (saat ini masih berupa Claude
+// Artifact terpisah - lihat catatan di README). Aplikasi payment/login ini
+// hanyalah "pintu gerbang": setelah unlocked, user diarahkan ke sini untuk
+// benar-benar memakai Lacaku. Bisa dioverride lewat env var LACAKU_APP_URL
+// kalau Lacaku dipindah ke domain sendiri di kemudian hari.
+const DEFAULT_LACAKU_APP_URL = 'https://claude.ai/code/artifact/776698f8-05af-47fa-b16d-69f3395a8b79';
+
 /**
  * GET /
  *
@@ -68,6 +75,9 @@ function serveAppPage(req, res) {
       res.end('Terjadi kesalahan pada server.');
       return;
     }
+    const lacakuAppUrl = process.env.LACAKU_APP_URL || DEFAULT_LACAKU_APP_URL;
+    html = html.split('%%LACAKU_APP_URL%%').join(lacakuAppUrl);
+
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end(html);
   });
