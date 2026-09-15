@@ -1,3 +1,5 @@
+const db = require('./db');
+
 /**
  * Daftar email "pemilik/evaluator" yang SELALU dianggap unlocked, terlepas
  * dari status pembayaran Scalev yang sebenarnya. Ini KHUSUS untuk keperluan
@@ -42,13 +44,28 @@ function isOwnerEmail(email) {
 
 /**
  * Status akses "efektif" yang dipakai untuk menentukan apakah seorang user
- * boleh memakai aplikasi: true kalau field `unlocked` di database true (user
- * betulan sudah bayar / di-unlock admin), ATAU kalau emailnya ada di daftar
- * OWNER_EMAILS (akses evaluasi pemilik).
+ * boleh memakai aplikasi:
+ *  - true kalau emailnya ada di daftar OWNER_EMAILS (akses evaluasi pemilik
+ *    aplikasi), ATAU
+ *  - untuk anggota tim (role 'member', lihat teamDb.js/db.js): mengikuti
+ *    status `unlocked` OWNER workspace-nya, BUKAN field `unlocked` miliknya
+ *    sendiri (anggota tim tidak bayar sendiri-sendiri) - dicek ulang dari
+ *    database di setiap request, jadi otomatis ikut berubah begitu owner-nya
+ *    unlock/lock, tanpa anggota tim perlu logout/login ulang, ATAU
+ *  - untuk owner biasa: field `unlocked` di database true (user betulan
+ *    sudah bayar / di-unlock admin).
  */
 function isEffectivelyUnlocked(user) {
   if (!user) return false;
-  return !!user.unlocked || isOwnerEmail(user.email);
+  if (isOwnerEmail(user.email)) return true;
+
+  if (user.role === 'member' && user.memberOfOwnerId) {
+    const owner = db.findUserByGoogleId(user.memberOfOwnerId);
+    if (!owner) return false;
+    return !!owner.unlocked || isOwnerEmail(owner.email);
+  }
+
+  return !!user.unlocked;
 }
 
 module.exports = { isOwnerEmail, isEffectivelyUnlocked, getOwnerEmails };

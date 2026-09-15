@@ -1,5 +1,6 @@
 const { verifyGoogleIdToken } = require('../googleAuth');
 const db = require('../db');
+const teamDb = require('../teamDb');
 const session = require('../session');
 const { readJsonBody } = require('../bodyParser');
 
@@ -79,14 +80,22 @@ async function handleGoogleAuth(req, res) {
     return;
   }
 
-  const user = db.upsertUserFromGoogle({
+  let user = db.upsertUserFromGoogle({
     googleId: payload.sub,
     email: payload.email,
     name: payload.name,
     picture: payload.picture,
   });
 
-  console.log(`[auth] Login sukses untuk googleId=${user.googleId} email=${user.email}`);
+  // Kalau email ini terdaftar sebagai anggota tim (aktif) milik owner lain,
+  // gabungkan ke workspace owner tersebut sekarang juga - lihat
+  // teamDb.syncMembershipOnLogin() untuk aturan lengkapnya (termasuk
+  // jaring-pengaman pelepasan kalau keanggotaannya sudah tidak aktif).
+  user = teamDb.syncMembershipOnLogin(user);
+
+  console.log(
+    `[auth] Login sukses untuk googleId=${user.googleId} email=${user.email} role=${user.role || 'owner'}`
+  );
 
   sendJson(
     res,

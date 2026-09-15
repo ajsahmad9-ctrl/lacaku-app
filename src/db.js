@@ -1,7 +1,22 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'users.json');
+
+/**
+ * Bikin ID workspace baru: dipakai Lacaku (lewat parameter URL
+ * "?workspace=<id>") untuk memisahkan data satu bisnis/pelanggan dari bisnis
+ * lain, karena semuanya memakai artifact Lacaku yang sama (lihat
+ * wrapDbForWorkspace() di kode Lacaku). Panjang & acak (18 byte random,
+ * base64url ~24 karakter) supaya praktis tidak bisa ditebak - ini SATU-
+ * SATUNYA lapisan pemisah data yang ada saat ini (bukan otentikasi
+ * kriptografis sungguhan di sisi Lacaku), jadi jangan pernah dibuat pendek
+ * atau mudah ditebak.
+ */
+function generateWorkspaceId() {
+  return crypto.randomBytes(18).toString('base64url');
+}
 
 function ensureDbFile() {
   const dir = path.dirname(DB_PATH);
@@ -68,6 +83,15 @@ function upsertUserFromGoogle({ googleId, email, name, picture }) {
       picture,
       unlocked: false,
       unlockedAt: null,
+      workspaceId: generateWorkspaceId(),
+      // role 'owner' = akun yang login & (biasanya) bayar sendiri, punya
+      // workspace sendiri. role 'member' = anggota tim yang didaftarkan oleh
+      // seorang owner (lihat teamDb.js/attachUserToWorkspace di bawah) dan
+      // memakai workspace + status langganan MILIK OWNER-nya, bukan miliknya
+      // sendiri.
+      role: 'owner',
+      memberOfOwnerId: null,
+      divisi: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -79,6 +103,74 @@ function upsertUserFromGoogle({ googleId, email, name, picture }) {
   users[idx] = { ...users[idx], email, name, picture, updatedAt: now };
   writeUsers(users);
   return users[idx];
+}
+
+/**
+ * Jadikan user (yang sudah ada) sebagai anggota tim workspace milik owner
+ * tertentu: workspace & akses efektifnya (lihat ownerAccess.js) mengikuti
+ * owner tersebut, BUKAN status `unlocked` miliknya sendiri. Dipanggil dari
+ * alur login (auth.js) begitu terdeteksi email yang login cocok dengan
+ * undangan tim yang masih aktif (lihat teamDb.js).
+ */
+function attachUserToWorkspace(userId, { workspaceId, memberOfOwnerId, divisi }) {
+  const users = readUsers();
+  const idx = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return null;
+  const now = new Date().toISOString();
+  users[idx] = {
+    ...users[idx],
+    role: 'member',
+    workspaceId,
+    memberOfOwnerId,
+    divisi: divisi || null,
+    updatedAt: now,
+  };
+  writeUsers(users);
+  return users[idx];
+}
+
+/**
+ * Lepaskan user dari workspace tim (dipakai saat owner menghapus/mencabut
+ * akses anggota tim - lihat routes/team.js). User diberi workspace BARU yang
+ * kosong miliknya sendiri (role kembali 'owner', unlocked:false) supaya
+ * akses ke data workspace tim yang lama benar-benar terputus SEKETIKA, bukan
+ * menunggu logout/login ulang - bukan cuma "ditandai" tapi id workspace-nya
+ * betul-betul berubah.
+ */
+function detachUserFromWorkspace(userId) {
+  const users = readUsers();
+  const idx = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return null;
+  const now = new Date().toISOString();
+  users[idx] = {
+    ...users[idx],
+    role: 'owner',
+    memberOfOwnerId: null,
+    divisi: null,
+    workspaceId: generateWorkspaceId(),
+    updatedAt: now,
+  };
+  writeUsers(users);
+  return users[idx];
+}
+
+/**
+ * Ambil workspaceId milik user; kalau belum punya (mis. akun yang dibuat
+ * SEBELUM fitur multi-tenant ini ada), buatkan satu baru dan simpan
+ * ("self-healing") - supaya user lama tidak pernah stuck tanpa workspaceId.
+ */
+function getOrCreateWorkspaceId(userId) {
+  const users = readUsers();
+  const idx = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return null;
+
+  if (users[idx].workspaceId) return users[idx].workspaceId;
+
+  const workspaceId = generateWorkspaceId();
+  users[idx].workspaceId = workspaceId;
+  users[idx].updatedAt = new Date().toISOString();
+  writeUsers(users);
+  return workspaceId;
 }
 
 /**
@@ -107,4 +199,7 @@ module.exports = {
   findUserByEmail,
   upsertUserFromGoogle,
   setUserUnlocked,
+  getOrCreateWorkspaceId,
+  attachUserToWorkspace,
+  detachUserFromWorkspace,
 };

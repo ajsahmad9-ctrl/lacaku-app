@@ -12,6 +12,7 @@ const { handleMe } = require('./src/routes/me');
 const { handleCheckout } = require('./src/routes/checkout');
 const { handleScalevWebhook } = require('./src/routes/webhook');
 const { handleAdminUnlock } = require('./src/routes/admin');
+const { handleTeamList, handleTeamAdd, handleTeamRemove } = require('./src/routes/team');
 
 const PORT = process.env.PORT || 3000;
 
@@ -110,6 +111,18 @@ const server = http.createServer((req, res) => {
     }
     if (req.method === 'POST' && pathname === '/api/admin/unlock') {
       handleAdminUnlock(req, res);
+      return;
+    }
+    if (req.method === 'GET' && pathname === '/api/team') {
+      handleTeamList(req, res);
+      return;
+    }
+    if (req.method === 'POST' && pathname === '/api/team/add') {
+      handleTeamAdd(req, res);
+      return;
+    }
+    if (req.method === 'POST' && pathname === '/api/team/remove') {
+      handleTeamRemove(req, res);
       return;
     }
     if (req.method === 'GET') {

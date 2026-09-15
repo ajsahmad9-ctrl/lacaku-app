@@ -47,6 +47,16 @@ function handleCheckout(req, res) {
     return;
   }
 
+  // Anggota tim TIDAK PERNAH checkout sendiri - akses mereka mengikuti
+  // langganan owner workspace-nya (lihat ownerAccess.js). Kalau owner-nya
+  // belum unlocked, halaman /app yang menampilkan pesan menunggu, bukan
+  // mengarahkan mereka untuk bayar sendiri.
+  if (user.role === 'member') {
+    res.writeHead(302, { Location: '/app' });
+    res.end();
+    return;
+  }
+
   const checkoutUrl = process.env.SCALEV_CHECKOUT_URL;
   if (!checkoutUrl) {
     console.error('[checkout] SCALEV_CHECKOUT_URL belum diatur di environment variable.');

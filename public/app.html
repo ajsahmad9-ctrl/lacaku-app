@@ -79,6 +79,28 @@
     }
     .logout { display: block; margin-top: 1.5rem; color: var(--ink-600); font-size: 12.5px; text-decoration: none; }
     .logout:hover { color: var(--brand-500); }
+    .card.has-team { max-width: 460px; }
+    .team-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); text-align: left; }
+    .team-section h2 { font-family: var(--font-display); font-size: 14px; margin: 0 0 4px; }
+    .team-hint { font-size: 12px; color: var(--ink-600); margin: 0 0 12px; }
+    .team-list { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .team-list .team-hint { margin: 0; }
+    .team-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: var(--brand-100); border-radius: 10px; }
+    .team-row .info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .team-row .email { font-weight: 600; color: var(--ink-900); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .team-row .meta { color: var(--ink-600); font-size: 11.5px; }
+    .team-row .status-joined { color: var(--success-ink); font-weight: 600; }
+    .team-row button.remove { border: none; background: transparent; color: #C0392B; font-size: 11.5px; font-weight: 700; cursor: pointer; padding: 4px 8px; flex-shrink: 0; }
+    .team-row button.remove:hover { text-decoration: underline; }
+    .team-form { display: flex; flex-direction: column; gap: 8px; }
+    .team-form input { padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); font-size: 13px; font-family: inherit; width: 100%; }
+    .team-form button { padding: 9px; border-radius: 8px; border: none; background: var(--brand-solid); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+    .team-form button:hover { background: var(--brand-solid-hover); }
+    .team-form button:disabled { opacity: .6; cursor: default; }
+    .team-msg { font-size: 11.5px; min-height: 14px; }
+    .team-msg.error { color: #C0392B; }
+    .team-msg.success { color: var(--success-ink); }
+    .member-note { margin-top: 14px; padding: 10px 12px; background: var(--brand-100); border-radius: 10px; font-size: 12px; text-align: left; color: var(--ink-700); }
   </style>
 </head>
 <body>
@@ -114,13 +136,42 @@
 
     function render(data) {
       const card = document.getElementById('card');
-      if (data.unlocked) {
+      const isMember = data.role === 'member';
+      card.classList.toggle('has-team', data.unlocked && !isMember);
+
+      if (data.unlocked && !isMember) {
+        // Owner (pembayar) yang sudah unlocked - tampilkan link Lacaku +
+        // pengelolaan anggota tim (undang Gmail rekan supaya otomatis masuk
+        // ke workspace yang sama, tanpa perlu bayar sendiri-sendiri).
         card.innerHTML = `
           <img class="logo" src="${LOGO_SRC}" alt="Lacaku" />
           <h1>Halo, ${escapeHtml(data.name || data.email)}</h1>
           <span class="badge">Akses Terbuka</span>
           <p style="margin-top:10px;">Anda sudah bisa mengakses semua fitur Lacaku.</p>
           <a class="btn" href="%%LACAKU_APP_URL%%" target="_blank" rel="noopener">Buka Lacaku</a>
+          ${teamSectionHtml()}
+          <a class="logout" href="/logout">Keluar</a>
+        `;
+        wireTeamSection();
+      } else if (data.unlocked && isMember) {
+        // Anggota tim, owner-nya sudah unlocked - langsung bisa buka Lacaku,
+        // tidak melihat/mengelola anggota tim (itu wewenang owner).
+        card.innerHTML = `
+          <img class="logo" src="${LOGO_SRC}" alt="Lacaku" />
+          <h1>Halo, ${escapeHtml(data.name || data.email)}</h1>
+          <span class="badge">Akses Terbuka</span>
+          <p style="margin-top:10px;">Anda punya akses ke Lacaku sebagai anggota tim.</p>
+          <a class="btn" href="%%LACAKU_APP_URL%%" target="_blank" rel="noopener">Buka Lacaku</a>
+          <div class="member-note">Anda anggota tim (${escapeHtml(data.divisi || 'tanpa label')}) dari akun <strong>${escapeHtml(data.ownerEmail || '-')}</strong>. Akses ini mengikuti status langganan akun tersebut - Anda tidak perlu bayar sendiri.</div>
+          <a class="logout" href="/logout">Keluar</a>
+        `;
+      } else if (isMember) {
+        // Anggota tim, tapi owner-nya BELUM unlocked - tidak diarahkan ke
+        // checkout (mereka tidak bayar sendiri), cukup tunggu.
+        card.innerHTML = `
+          <img class="logo" src="${LOGO_SRC}" alt="Lacaku" />
+          <h1>Halo, ${escapeHtml(data.name || data.email)}</h1>
+          <p>Menunggu pemilik akun (<strong>${escapeHtml(data.ownerEmail || '-')}</strong>) mengaktifkan langganan Lacaku. Anda akan otomatis mendapat akses begitu langganan aktif.</p>
           <a class="logout" href="/logout">Keluar</a>
         `;
       } else {
@@ -135,6 +186,124 @@
           window.location.href = '/checkout';
         });
       }
+    }
+
+    function teamSectionHtml() {
+      return `
+        <div class="team-section">
+          <h2>Anggota Tim</h2>
+          <p class="team-hint">Daftarkan Gmail rekan tim (CS, Admin Gudang, dll). Begitu mereka login pakai email itu di halaman ini, otomatis masuk ke Lacaku yang sama dengan Anda, tanpa perlu bayar sendiri. Label di sini cuma catatan Anda - role sebenarnya (CS/Admin/Supplier) tetap dipilih di dalam Lacaku.</p>
+          <ul class="team-list" id="teamList"><li class="team-hint">Memuat...</li></ul>
+          <form class="team-form" id="teamAddForm">
+            <input type="email" id="teamEmail" placeholder="email@gmail.com" required />
+            <input type="text" id="teamDivisi" placeholder="Label/divisi (opsional, mis. CS)" maxlength="60" />
+            <button type="submit">Tambah Anggota</button>
+            <div class="team-msg" id="teamMsg"></div>
+          </form>
+        </div>
+      `;
+    }
+
+    async function wireTeamSection() {
+      await refreshTeamList();
+
+      const form = document.getElementById('teamAddForm');
+      if (!form) return;
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const emailInput = document.getElementById('teamEmail');
+        const divisiInput = document.getElementById('teamDivisi');
+        const msg = document.getElementById('teamMsg');
+        const btn = form.querySelector('button[type="submit"]');
+        const email = emailInput.value.trim();
+        const divisi = divisiInput.value.trim();
+
+        msg.textContent = '';
+        msg.className = 'team-msg';
+        btn.disabled = true;
+        try {
+          const res = await fetch('/api/team/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, divisi }),
+          });
+          const json = await res.json();
+          if (!res.ok || !json.ok) {
+            msg.textContent = json.error || 'Gagal menambahkan anggota tim.';
+            msg.className = 'team-msg error';
+            return;
+          }
+          emailInput.value = '';
+          divisiInput.value = '';
+          msg.textContent = 'Berhasil ditambahkan.';
+          msg.className = 'team-msg success';
+          await refreshTeamList();
+        } catch (err) {
+          msg.textContent = 'Gangguan jaringan, coba lagi.';
+          msg.className = 'team-msg error';
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+
+    async function refreshTeamList() {
+      const list = document.getElementById('teamList');
+      if (!list) return;
+      let json;
+      try {
+        const res = await fetch('/api/team', { cache: 'no-store' });
+        json = await res.json();
+      } catch (err) {
+        list.innerHTML = '<li class="team-hint">Gagal memuat daftar anggota tim.</li>';
+        return;
+      }
+      if (!json.ok || !Array.isArray(json.members)) {
+        list.innerHTML = '<li class="team-hint">Gagal memuat daftar anggota tim.</li>';
+        return;
+      }
+      if (!json.members.length) {
+        list.innerHTML = '<li class="team-hint">Belum ada anggota tim ditambahkan.</li>';
+        return;
+      }
+      list.innerHTML = json.members
+        .map(
+          (m) => `
+        <li class="team-row">
+          <div class="info">
+            <span class="email">${escapeHtml(m.email)}</span>
+            <span class="meta">${escapeHtml(m.divisi || 'Tanpa label')} &middot; <span class="${m.joined ? 'status-joined' : ''}">${m.joined ? 'Sudah gabung' : 'Belum login'}</span></span>
+          </div>
+          <button type="button" class="remove" data-email="${escapeHtml(m.email)}">Hapus</button>
+        </li>
+      `
+        )
+        .join('');
+
+      list.querySelectorAll('button.remove').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const email = btn.getAttribute('data-email');
+          if (!confirm(`Cabut akses ${email} dari tim?`)) return;
+          btn.disabled = true;
+          try {
+            const res = await fetch('/api/team/remove', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email }),
+            });
+            const json2 = await res.json();
+            if (!res.ok || !json2.ok) {
+              alert(json2.error || 'Gagal menghapus anggota tim.');
+              btn.disabled = false;
+              return;
+            }
+            await refreshTeamList();
+          } catch (err) {
+            alert('Gangguan jaringan, coba lagi.');
+            btn.disabled = false;
+          }
+        });
+      });
     }
 
     function escapeHtml(str) {

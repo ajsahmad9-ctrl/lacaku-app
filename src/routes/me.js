@@ -32,6 +32,13 @@ function handleMe(req, res) {
     return;
   }
 
+  const isMember = user.role === 'member';
+  let ownerEmail = null;
+  if (isMember && user.memberOfOwnerId) {
+    const owner = db.findUserByGoogleId(user.memberOfOwnerId);
+    ownerEmail = owner ? owner.email : null;
+  }
+
   sendJson(res, 200, {
     ok: true,
     email: user.email,
@@ -39,6 +46,9 @@ function handleMe(req, res) {
     picture: user.picture,
     unlocked: isEffectivelyUnlocked(user),
     unlockedAt: user.unlockedAt || null,
+    role: isMember ? 'member' : 'owner',
+    divisi: user.divisi || null,
+    ownerEmail,
   });
 }
 

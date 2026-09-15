@@ -75,7 +75,17 @@ function serveAppPage(req, res) {
       res.end('Terjadi kesalahan pada server.');
       return;
     }
-    const lacakuAppUrl = process.env.LACAKU_APP_URL || DEFAULT_LACAKU_APP_URL;
+    const baseLacakuAppUrl = process.env.LACAKU_APP_URL || DEFAULT_LACAKU_APP_URL;
+    // Setiap user/bisnis punya workspaceId sendiri (dibuat sekali, tersimpan
+    // di users.json) - dikirim ke Lacaku lewat "?workspace=" supaya data
+    // resi/retur/tim satu bisnis tidak tercampur dengan bisnis lain, karena
+    // semua pelanggan memakai artifact Lacaku yang sama. Lihat
+    // resolveWorkspaceId()/wrapDbForWorkspace() di kode Lacaku.
+    const workspaceId = db.getOrCreateWorkspaceId(user.id);
+    const separator = baseLacakuAppUrl.includes('?') ? '&' : '?';
+    const lacakuAppUrl = workspaceId
+      ? `${baseLacakuAppUrl}${separator}workspace=${encodeURIComponent(workspaceId)}`
+      : baseLacakuAppUrl;
     html = html.split('%%LACAKU_APP_URL%%').join(lacakuAppUrl);
 
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
