@@ -101,6 +101,9 @@
     .team-msg.error { color: #C0392B; }
     .team-msg.success { color: var(--success-ink); }
     .member-note { margin-top: 14px; padding: 10px 12px; background: var(--brand-100); border-radius: 10px; font-size: 12px; text-align: left; color: var(--ink-700); }
+    .badge-free { background: var(--brand-100); color: var(--brand-700); }
+    .btn-upgrade { display: block; width: 100%; margin-top: 10px; padding: 9px 16px; border-radius: 999px; background: transparent; color: var(--brand-solid); border: 1.5px solid var(--brand-solid); font-weight: 700; cursor: pointer; font-size: 13px; }
+    .btn-upgrade:hover { background: var(--brand-100); }
   </style>
 </head>
 <body>
@@ -175,11 +178,17 @@
           <a class="logout" href="/logout">Keluar</a>
         `;
       } else {
+        // Owner, belum bayar/unlocked - tetap bisa langsung memakai Lacaku
+        // (paket Gratis, kuota terbatas). Checkout/upgrade jadi tombol
+        // OPSIONAL, bukan gerbang wajib sebelum bisa membuka Lacaku sama
+        // sekali.
         card.innerHTML = `
           <img class="logo" src="${LOGO_SRC}" alt="Lacaku" />
           <h1>Halo, ${escapeHtml(data.name || data.email)}</h1>
-          <p>Akses Anda masih terkunci. Buka semua fitur Lacaku dengan sekali bayar.</p>
-          <button class="btn" id="btnBuka">Buka Semua</button>
+          <span class="badge badge-free">Paket Gratis</span>
+          <p style="margin-top:10px;">Anda sudah bisa langsung memakai Lacaku dengan paket Gratis (kuota terbatas).</p>
+          <a class="btn" href="%%LACAKU_APP_URL%%" target="_blank" rel="noopener">Buka Lacaku</a>
+          <button class="btn-upgrade" id="btnBuka">Upgrade ke Berbayar</button>
           <a class="logout" href="/logout">Keluar</a>
         `;
         document.getElementById('btnBuka').addEventListener('click', () => {

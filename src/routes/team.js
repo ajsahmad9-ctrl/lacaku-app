@@ -1,6 +1,7 @@
 const session = require('../session');
 const db = require('../db');
 const teamDb = require('../teamDb');
+const { isEffectivelyUnlocked } = require('../ownerAccess');
 const { readJsonBody } = require('../bodyParser');
 
 function sendJson(res, statusCode, obj) {
@@ -77,6 +78,17 @@ async function handleTeamAdd(req, res) {
     body = await readJsonBody(req);
   } catch (err) {
     sendJson(res, 400, { ok: false, error: 'Body request tidak valid.' });
+    return;
+  }
+
+  // Undang anggota tim adalah fitur paket berbayar (paket Gratis: 1 akun) -
+  // owner yang belum upgrade tidak bisa menambah anggota tim, walau mereka
+  // tetap bisa langsung memakai Lacaku sendiri di paket Gratis.
+  if (!isEffectivelyUnlocked(owner)) {
+    sendJson(res, 402, {
+      ok: false,
+      error: 'Menambahkan anggota tim adalah fitur paket berbayar. Upgrade dulu untuk mengundang anggota tim.',
+    });
     return;
   }
 
