@@ -56,7 +56,11 @@ function serveLoginPage(req, res) {
   }
   html = html.split('%%GOOGLE_CLIENT_ID%%').join(clientId);
 
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  // no-store: halaman ini dirender ulang tiap request (workspaceId/URL
+  // Lacaku disisipkan server-side), dan aplikasi ini masih sering
+  // di-update - tanpa header ini browser bisa menyimpan versi lama dan
+  // fitur baru terasa "belum muncul" walau server sudah benar.
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
   res.end(html);
 }
 
@@ -96,7 +100,8 @@ function serveAppPage(req, res) {
       : baseLacakuAppUrl;
     html = html.split('%%LACAKU_APP_URL%%').join(lacakuAppUrl);
 
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    // no-store - lihat catatan yang sama di serveLoginPage() di atas.
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
     res.end(html);
   });
 }
