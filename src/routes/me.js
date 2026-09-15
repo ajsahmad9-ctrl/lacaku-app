@@ -49,6 +49,12 @@ function handleMe(req, res) {
     role: isMember ? 'member' : 'owner',
     divisi: user.divisi || null,
     ownerEmail,
+    // Kode akses bisnis yang harus ditempel manual di Lacaku (lihat
+    // renderWorkspaceGate() di kode Lacaku) - parameter "?workspace=" di URL
+    // TERNYATA tidak bisa diandalkan karena claude.ai menjalankan artifact
+    // di sandbox tersendiri yang tidak selalu meneruskan query string ke
+    // dalamnya, jadi ini jalur utama yang benar-benar berfungsi.
+    workspaceId: db.getOrCreateWorkspaceId(user.id),
   });
 }
 

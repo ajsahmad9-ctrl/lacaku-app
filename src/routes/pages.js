@@ -10,6 +10,14 @@ const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
 // hanyalah "pintu gerbang": setelah unlocked, user diarahkan ke sini untuk
 // benar-benar memakai Lacaku. Bisa dioverride lewat env var LACAKU_APP_URL
 // kalau Lacaku dipindah ke domain sendiri di kemudian hari.
+// PENTING: ini HARUS link publish artifact yang berdiri sendiri (bentuk
+// "claude.ai/artifact/<kode>"), BUKAN link "claude.ai/code/artifact/<uuid>"
+// (tampilan artifact yang dibungkus di dalam chrome chat/sesi Claude Code -
+// ada bar "Share"/ikon chat di atasnya). Yang kedua ternyata TIDAK meneruskan
+// parameter "?workspace=" ke halaman Lacaku sesungguhnya (kemungkinan
+// artifact-nya dirender di dalam iframe terpisah di sana), jadi Lacaku selalu
+// melihat "tidak ada workspace" walau URL luarnya sudah benar - itulah
+// penyebab "Akses Tidak Valid" yang sempat muncul terus-menerus.
 const DEFAULT_LACAKU_APP_URL = 'https://claude.ai/artifact/FkAD2GnybgQ747FVbnrbm2';
 
 /**

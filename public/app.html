@@ -104,6 +104,13 @@
     .badge-free { background: var(--brand-100); color: var(--brand-700); }
     .btn-upgrade { display: block; width: 100%; margin-top: 10px; padding: 9px 16px; border-radius: 999px; background: transparent; color: var(--brand-solid); border: 1.5px solid var(--brand-solid); font-weight: 700; cursor: pointer; font-size: 13px; }
     .btn-upgrade:hover { background: var(--brand-100); }
+    .ws-code-box { margin-top: 12px; padding: 10px 12px; background: var(--brand-100); border-radius: 10px; text-align: left; }
+    .ws-code-label { font-size: 11px; color: var(--ink-600); margin: 0 0 6px; line-height: 1.4; }
+    .ws-code-row { display: flex; align-items: center; gap: 8px; }
+    .ws-code-value { flex: 1; min-width: 0; font-family: monospace; font-size: 11.5px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; overflow-x: auto; white-space: nowrap; color: var(--ink-900); }
+    .ws-code-copy { flex-shrink: 0; border: 1px solid var(--brand-solid); background: #fff; color: var(--brand-solid); border-radius: 8px; padding: 6px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+    .ws-code-copy:hover { background: var(--brand-100); }
+    .ws-code-copy.copied { background: var(--success-bg); border-color: var(--success-bg); color: var(--success-ink); }
   </style>
 </head>
 <body>
@@ -151,11 +158,13 @@
           <h1>Halo, ${escapeHtml(data.name || data.email)}</h1>
           <span class="badge">Akses Terbuka</span>
           <p style="margin-top:10px;">Anda sudah bisa mengakses semua fitur Lacaku.</p>
-          <a class="btn" href="%%LACAKU_APP_URL%%" target="_blank" rel="noopener">Buka Lacaku</a>
+          <a class="btn" id="btnBukaLacaku" href="%%LACAKU_APP_URL%%" target="_blank" rel="noopener">Buka Lacaku</a>
+          ${workspaceCodeHtml(data.workspaceId)}
           ${teamSectionHtml()}
           <a class="logout" href="/logout">Keluar</a>
         `;
         wireTeamSection();
+        wireWorkspaceExtras(data.workspaceId);
       } else if (data.unlocked && isMember) {
         // Anggota tim, owner-nya sudah unlocked - langsung bisa buka Lacaku,
         // tidak melihat/mengelola anggota tim (itu wewenang owner).
@@ -164,10 +173,12 @@
           <h1>Halo, ${escapeHtml(data.name || data.email)}</h1>
           <span class="badge">Akses Terbuka</span>
           <p style="margin-top:10px;">Anda punya akses ke Lacaku sebagai anggota tim.</p>
-          <a class="btn" href="%%LACAKU_APP_URL%%" target="_blank" rel="noopener">Buka Lacaku</a>
+          <a class="btn" id="btnBukaLacaku" href="%%LACAKU_APP_URL%%" target="_blank" rel="noopener">Buka Lacaku</a>
+          ${workspaceCodeHtml(data.workspaceId)}
           <div class="member-note">Anda anggota tim (${escapeHtml(data.divisi || 'tanpa label')}) dari akun <strong>${escapeHtml(data.ownerEmail || '-')}</strong>. Akses ini mengikuti status langganan akun tersebut - Anda tidak perlu bayar sendiri.</div>
           <a class="logout" href="/logout">Keluar</a>
         `;
+        wireWorkspaceExtras(data.workspaceId);
       } else if (isMember) {
         // Anggota tim, tapi owner-nya BELUM unlocked - tidak diarahkan ke
         // checkout (mereka tidak bayar sendiri), cukup tunggu.
@@ -187,12 +198,62 @@
           <h1>Halo, ${escapeHtml(data.name || data.email)}</h1>
           <span class="badge badge-free">Paket Gratis</span>
           <p style="margin-top:10px;">Anda sudah bisa langsung memakai Lacaku dengan paket Gratis (kuota terbatas).</p>
-          <a class="btn" href="%%LACAKU_APP_URL%%" target="_blank" rel="noopener">Buka Lacaku</a>
+          <a class="btn" id="btnBukaLacaku" href="%%LACAKU_APP_URL%%" target="_blank" rel="noopener">Buka Lacaku</a>
+          ${workspaceCodeHtml(data.workspaceId)}
           <button class="btn-upgrade" id="btnBuka">Upgrade ke Berbayar</button>
           <a class="logout" href="/logout">Keluar</a>
         `;
         document.getElementById('btnBuka').addEventListener('click', () => {
           window.location.href = '/checkout';
+        });
+        wireWorkspaceExtras(data.workspaceId);
+      }
+    }
+
+    function workspaceCodeHtml(workspaceId) {
+      if (!workspaceId) return '';
+      return `
+        <div class="ws-code-box">
+          <p class="ws-code-label">Kalau Lacaku minta "Masukkan Kode Akses Bisnis", tempel kode ini (sudah otomatis tersalin saat Anda klik "Buka Lacaku"):</p>
+          <div class="ws-code-row">
+            <code class="ws-code-value">${escapeHtml(workspaceId)}</code>
+            <button type="button" class="ws-code-copy" id="wsCodeCopyBtn">Salin</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Menyalin kode akses workspace ke clipboard otomatis begitu tombol
+    // "Buka Lacaku" diklik (supaya di layar "Masukkan Kode Akses Bisnis" di
+    // Lacaku, user tinggal klik "Tempel dari Clipboard"), plus tombol
+    // "Salin" manual sebagai cadangan. Parameter "?workspace=" di link tetap
+    // dikirim juga (tidak mengganggu), tapi TIDAK bisa diandalkan sendirian
+    // karena claude.ai menjalankan Lacaku di sandbox yang kadang tidak
+    // meneruskan query string - makanya kode ini yang jadi jalur utama.
+    function wireWorkspaceExtras(workspaceId) {
+      if (!workspaceId) return;
+      const openBtn = document.getElementById('btnBukaLacaku');
+      if (openBtn) {
+        openBtn.addEventListener('click', () => {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(workspaceId).catch(() => {});
+          }
+        });
+      }
+      const copyBtn = document.getElementById('wsCodeCopyBtn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(workspaceId);
+            copyBtn.textContent = 'Tersalin!';
+            copyBtn.classList.add('copied');
+            setTimeout(() => {
+              copyBtn.textContent = 'Salin';
+              copyBtn.classList.remove('copied');
+            }, 1800);
+          } catch (err) {
+            copyBtn.textContent = 'Gagal, salin manual';
+          }
         });
       }
     }
