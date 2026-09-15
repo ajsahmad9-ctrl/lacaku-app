@@ -10,7 +10,7 @@ const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
 // hanyalah "pintu gerbang": setelah unlocked, user diarahkan ke sini untuk
 // benar-benar memakai Lacaku. Bisa dioverride lewat env var LACAKU_APP_URL
 // kalau Lacaku dipindah ke domain sendiri di kemudian hari.
-const DEFAULT_LACAKU_APP_URL = 'https://claude.ai/code/artifact/776698f8-05af-47fa-b16d-69f3395a8b79';
+const DEFAULT_LACAKU_APP_URL = 'https://claude.ai/artifact/FkAD2GnybgQ747FVbnrbm2';
 
 /**
  * GET /
